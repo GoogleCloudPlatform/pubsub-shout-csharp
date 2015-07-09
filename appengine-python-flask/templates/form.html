@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Hello World</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script>
+        var requestState = {
+            xhr: null,
+            timeout: null,
+            errors: [],
+            shoutId: 0,
+            reset: function() {
+                if (this.xhr) {
+                    this.xhr.abort();
+                    this.xhr = null;
+                }
+                this.shoutId += 1;
+                if (this.timeout) {
+                    window.clearTimeout(this.timeout);
+                    this.timeout = null;
+                }
+                this.errors = [];
+            }
+        };
+
+        /**
+         * Translate the status returned by a shout request into a human-
+         * readable message.
+         *
+         * @param status, a string status code returned from a shout request.
+         * @returns a text string for the user.
+         */
+        function getStatusText(status) {
+            var map = {
+                "new": "Queueing...",
+                "shouting": "Shouting...",
+                "error": "Shouting...",
+                "fatal": "Error.",
+                "success": "Done!"
+            };
+            return map[status];
+        }
+
+        /**
+         * Handle HTTP responses for all urls.
+         */
+        function handleResponse(requestState) {
+            var xhr = requestState.xhr;
+            if (xhr.readyState == 4) {
+                requestState.xhr = null;
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    var response = JSON.parse(xhr.responseText);
+                    if (response.shoutLink) {
+                        document.getElementById("token").value =
+                                response.shoutLink.token;
+                        var form = document.getElementById("shoutForm");
+                        form.method = response.shoutLink.method;
+                        form.target = response.shoutLink.target;
+                        document.getElementById("submitButton").disabled = false;
+                    }
+                    if (response.finalLink) {
+                        var onUnload = function() {
+                            var xhr3 = new XMLHttpRequest();
+                            xhr3.open(response.finalLink.method,
+                                    response.finalLink.target, false);
+                            var formData = new FormData();
+                            formData.append("token", response.finalLink.token);
+                            xhr3.send(formData);
+                        };
+                        window.addEventListener("unload", onUnload);
+                    }
+                    if (response.nextLink) {
+                        var xhr2 = requestState.xhr = new XMLHttpRequest();
+                        xhr2.onreadystatechange = function () {
+                            handleResponse(requestState);
+                        };
+                        xhr2.open(response.nextLink.method,
+                                response.nextLink.target, true);
+                        var formData = new FormData();
+                        formData.append("token", response.nextLink.token);
+                        if (response.nextLink.delaySeconds) {
+                            window.setTimeout(function() {
+                                xhr2.send(formData);
+                            }, 1000 * response.nextLink.delaySeconds);
+                        } else {
+                            xhr2.send(formData);
+                        }
+                    } else {
+                        window.clearTimeout(requestState.timeout);
+                    }
+                    if (requestState.shoutId != response.shoutId) {
+                        return;  // Stale message or no change in status.
+                    }
+                    if (response.error) {
+                        requestState.errors.push(response.error);
+                    }
+                    if (response.result) {
+                        document.getElementById("shoutText").value =
+                                response.result;
+                    }
+                    if (response.status) {
+                        document.getElementById("status").innerText =
+                                getStatusText(response.status);
+                        if (response.status == "fatal") {
+                            document.getElementById("status").innerText +=
+                                    "\n" + requestState.errors.join("\n")
+                        }
+                    }
+                } else if (requestState.timeout) {
+                    // Unexpected response code.  Report an error.
+                    document.getElementById("status").innerText =
+                            "Error: " + xhr.responseText + "\n" +
+                            requestState.errors.join("\n");
+                    window.clearTimeout(requestState.timeout);
+                }
+            }
+        }
+
+        /**
+         * Clean up the pending request and report an error.
+         */
+        function onTimeout(requestState) {
+            document.getElementById("status").innerText =
+                    "Timeout:\n" + requestState.errors.join("\n");
+            requestState.reset();
+        }
+
+        /**
+         * Create a new XMLHttpRequest and its associated state.
+         */
+        function newRequestState() {
+            requestState.reset();
+            requestState.xhr = new XMLHttpRequest();
+            requestState.xhr.onreadystatechange = function () {
+                handleResponse(requestState);
+            };
+            return requestState;
+        }
+
+        /**
+         * Gather the contents from the form and post it to /shout.
+         */
+        function postForm() {
+            var form = document.getElementById("shoutForm");
+            var requestState = newRequestState();
+            // Timeout after {{ timeout_seconds }} seconds.
+            requestState.timeout = window.setTimeout(function () {
+                onTimeout(requestState)
+            }, 1000 * {{ timeout_seconds }});
+            requestState.xhr.open(form.method, form.target, true);
+            var formData = new FormData(form);
+            formData.append("shoutId", requestState.shoutId);
+            requestState.xhr.send(formData);
+            document.getElementById("status").innerText = "Queueing...";
+        }
+
+        function onLoad() {
+            var requestState = newRequestState();
+            requestState.xhr.open("POST", "connect", true);
+            requestState.xhr.send();
+        }
+    </script>
+</head>
+<body onload="onLoad()">
+<p id="status"> Hello {{ world }} </p>
+
+<form id="shoutForm" onsubmit="postForm(); return false;">
+    <p>
+        <input type="hidden" name="token" id="token">
+        <input type="text" name="text" id="shoutText">
+    </p>
+
+    <p>
+        <input id="submitButton" type="submit" disabled>
+    </p>
+</form>
+</body>
+</html>

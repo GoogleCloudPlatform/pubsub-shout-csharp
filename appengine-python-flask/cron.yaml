@@ -1,0 +1,4 @@
+cron:
+- description: Purges old shout records.
+  url: /purge
+  schedule: every 1 hours

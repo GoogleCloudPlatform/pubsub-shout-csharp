@@ -1,0 +1,8 @@
+*~
+*.pyc
+bin
+obj
+workspace.xml
+*.suo
+packages/
+*.csproj.user

@@ -1,0 +1,21 @@
+application: shout7q
+version: 1
+runtime: python27
+api_version: 1
+threadsafe: yes
+
+handlers:
+- url: /purge   # Invoked by the cron job.
+  script: main.app
+  login: admin
+- url: /init
+  script: main.app
+  login: admin
+- url: .*
+  script: main.app
+  secure: always
+libraries:
+- name: jinja2
+  version: "2.6"
+- name: markupsafe
+  version: "0.15"

@@ -1,0 +1,6 @@
+indexes:
+- kind: ShoutStatusLog
+  properties:
+  - name: shout_id
+  - name: status
+    direction: desc
