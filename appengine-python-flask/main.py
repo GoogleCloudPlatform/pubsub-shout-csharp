@@ -1,3 +1,17 @@
+# Copyright 2015 Google Inc. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """
 A shout server with streaming status updates.
 
@@ -29,6 +43,7 @@ import pubsub
 import traceback
 import werkzeug.urls
 import socket
+import rotoken
 
 import flask
 from flask import Flask, request
@@ -39,6 +54,7 @@ from google.appengine.ext import ndb
 
 app = Flask(__name__)
 app.config['DEBUG'] = True
+purse = rotoken.Rotoken()  # Where my rotating tokens are kept.
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__),
@@ -51,7 +67,6 @@ SUBSCRIPTION = "shout-tasks-workers"
 TIMEOUT_SECONDS = 90
 APP_ID = app_identity.get_application_id()
 RANDOM_ID_LEN = 43  # Equivalent to 256 bits of randomness.
-SECRET_POST_STATUS_TOKEN = 'GwrZfsxjLwZyIRCz2boCRn3kTNiU8kXdp2xZGMsctfX'
 
 ###############################################################################
 # Data model.
@@ -169,16 +184,16 @@ def shout():
     })
     ps.publish(TOPIC, request.form['text'], {
         'deadline': str(deadline),
-        'postStatusUrl': 'https://%s/postShoutStatus?%s' %
+        'postStatusUrl': 'https://%s/post_shout_status?%s' %
                          (socket.getfqdn(socket.gethostname()), query),
-        'postStatusToken': SECRET_POST_STATUS_TOKEN,
+        'postStatusToken': purse.get_tokens()[0],
     })
     async_put.get_result()
     # Wait for a result.
     return poll_shout_status(token['browserId'], request.form['shoutId'], 'new')
 
 
-@app.route('/shoutStatus', methods=['POST'])
+@app.route('/shout_status', methods=['POST'])
 def shout_status():
     """Check on the status of a pending shout request."""
     token = werkzeug.urls.url_decode(request.form['token'])
@@ -238,7 +253,7 @@ def poll_shout_status(browser_id, shout_id, last_status):
             sleep_seconds = min(5, sleep_seconds * 2)
 
     response['nextLink'] = {
-        'target': 'shoutStatus',
+        'target': 'shout_status',
         'method': 'POST',
         'token': werkzeug.urls.url_encode({
             'browserId': browser_id,
@@ -248,15 +263,13 @@ def poll_shout_status(browser_id, shout_id, last_status):
     return json.dumps(response), 202
 
 
-@app.route('/postShoutStatus', methods=['POST'])
+@app.route('/post_shout_status', methods=['POST'])
 def post_shout_status():
     """Stores the shout status in datastore.
 
     Called by our Windows worker processes.
-    A small level of security against attackers: use a secret token that
-    attackers will not be able to guess and only our workers will know.
     """
-    if request.form.get('token') != SECRET_POST_STATUS_TOKEN:
+    if request.form.get('token') not in purse.get_tokens():
         flask.abort(403)
     entity = ShoutStatusLog()
     entity.combined_shout_id = combine_ids(request.args['browserId'],
@@ -286,6 +299,15 @@ def purge():
     return "purged."
 
 
+@app.route('/rotate_token')
+def rotate_token():
+    """Rotates the security token used to authenticate post_shout_status
+    requests.
+    """
+    purse.rotate_token(new_random_id())
+    return "ok."
+
+
 @app.route('/init')
 def init():
     """Called once by an admin to create pubsub topics and subscriptions."""
@@ -293,7 +315,8 @@ def init():
     errors = []
     for lam in (
             lambda: ps.create_topic(TOPIC),
-            lambda: ps.subscribe(TOPIC, SUBSCRIPTION)):
+            lambda: ps.subscribe(TOPIC, SUBSCRIPTION),
+            lambda: purse.init(new_random_id())):
         try:
             lam()
         except:
