@@ -7,7 +7,7 @@ It demonstrates how to use
 ## Build
 1. Clone this repo with
    ```sh
-   git clone https://github.com/TODO
+   git clone https://github.com/GoogleCloudPlatform/pubsub-shout-csharp
    ```
 2. Open ShoutSelvice.sln with Microsoft Visual Studio version 2012 or later.
 3. Edit `ShoutLib/Constants.cs`.  Update the variables
