@@ -6,6 +6,7 @@ It demonstrates how to use
 
 ## Build
 1. Clone this repo with
+
    ```sh
    git clone https://github.com/GoogleCloudPlatform/pubsub-shout-csharp
    ```
