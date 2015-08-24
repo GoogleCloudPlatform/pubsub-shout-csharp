@@ -14,7 +14,7 @@ See the README file for directions. You'll need
 2. Clone this repo with
 
    ```sh
-   git clone https://github.com/TODO
+   git clone https://github.com/GoogleCloudPlatform/pubsub-shout-csharp
    ```
 3. Install dependencies in the project's lib directory.
    Note: App Engine can only import libraries from inside your project directory.
@@ -34,7 +34,7 @@ To deploy the application:
    ```
    appcfg.py -A <your-project-id> --oauth2 update .
    ```
-3. Initialize the app by visiting https://<your-project-id>.appspot.com/init.
+3. Initialize the app by visiting https://&lt;your-project-id&gt;.appspot.com/init.
    This creates the work queue.  You only need visit this page once, ever.
    Repeatedly visiting this page will print an error because the resources it
    creates have already been created.
