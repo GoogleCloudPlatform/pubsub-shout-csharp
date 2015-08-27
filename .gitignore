@@ -6,3 +6,6 @@ workspace.xml
 *.suo
 packages/
 *.csproj.user
+credentials.tar.gz
+api_key.py
+*.json
