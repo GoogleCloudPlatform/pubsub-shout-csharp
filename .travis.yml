@@ -30,4 +30,4 @@ script:
 # Deploy the app
 - gcloud -q preview app deploy appengine-python-flask/app.yaml --version ${GOOGLE_APP_VERSION}
 # Run and end to end test
-- python appengine-python-flask/e2e_test.py
+- python e2e_test.py
