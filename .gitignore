@@ -9,3 +9,5 @@ packages/
 credentials.tar.gz
 api_key.py
 *.json
+.idea/
+*.iml

@@ -11,14 +11,93 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import urllib2
-import logging
+import json
 import os
-
+import pprint
+import urllib
+import urllib2
+import urlparse
 
 HOST = 'https://{0}-dot-{1}.appspot.com'.format(
-  os.environ['GOOGLE_APP_VERSION'], os.environ['GOOGLE_APP_ID'])
+    os.environ['GOOGLE_APP_VERSION'], os.environ['GOOGLE_APP_ID'])
 
-response = urllib2.urlopen("{}/".format(HOST))
+
+class BrowserState(object):
+    """Reproduces a lot of the logic in form.html's HandleResponse().
+
+    TODO: Find a way to reuse and test that javascript.
+    """
+
+    def __init__(self, host):
+        """host should include the scheme; ex: https://www.google.com"""
+        self.shout_id = 0
+        self.final_link = None
+        self.shout_link = None
+        self.host = host
+        self.urlopen("{}/connect".format(host), '')
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Invokes final_link if we saw one."""
+        if self.final_link:
+            self.urlopen(self.final_link['target'], {
+                'token': self.final_link['token']})
+
+    def handle_response(self, response):
+        """Expects a successful HTTP response.
+
+        :arg response: a return value from urllib2.urlopen()
+        :returns a decoded json dict.
+        """
+        assert response.getcode() >= 200
+        assert response.getcode() < 300
+        reply = json.load(response)
+        pprint.pprint(reply)
+        self.shout_link = reply.get('shoutLink', self.shout_link)
+        self.final_link = reply.get('finalLink', self.final_link)
+        return reply
+
+    def urlopen(self, target, keyval):
+        """Call urllib2.urlopen() for the target link.
+
+        :arg target: a url or partial url relative to host name.
+        :returns a decoded json dict.
+        """
+        url = urlparse.urljoin(self.host, target)
+        print url
+        pprint.pprint(keyval)
+        response = urllib2.urlopen(url, urllib.urlencode(keyval))
+        return self.handle_response(response)
+
+    def shout(self, text):
+        """Invokes shout on the text."""
+        shout_id = self.shout_id
+        self.shout_id += 1
+        payload = {
+            'token': self.shout_link['token'],
+            'text': text,
+            'shoutId': shout_id
+        }
+        result = None
+        reply = self.urlopen(self.shout_link['target'], payload)
+        while True:
+            result = reply.get('result', result)
+            if 'nextLink' in reply:
+                next_link = reply['nextLink']
+                payload = {
+                    'token': next_link['token'],
+                    'shoutId': shout_id,
+                }
+                reply = self.urlopen(next_link['target'], payload)
+            else:
+                break
+        assert reply['status'] == 'success'
+        return result
+
+
+with BrowserState(HOST) as state:
+    assert 'HELLO' == state.shout('hello')
 
 print "ok"
