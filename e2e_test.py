@@ -13,7 +13,7 @@ import logging
 import os
 
 
-HOST = 'https://{0}.{1}.appspot.com'.format(os.environ['GOOGLE_APP_VERSON'],
+HOST = 'https://{0}.{1}.appspot.com'.format(os.environ['GOOGLE_APP_VERSION'],
                                             os.environ['GOOGLE_APP_ID'])
 
 response = urllib2.urlopen("{}/".format(HOST))
