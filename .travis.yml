@@ -30,5 +30,5 @@ script:
 # Deploy the app
 - gcloud -q preview app deploy appengine-python-flask/app.yaml --version ${GOOGLE_APP_VERSION}
 # Run an end to end test
-- python e2e_test.py
+- python api_test.py
 - phantomjs test.js
