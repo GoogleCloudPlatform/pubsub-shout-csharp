@@ -11,5 +11,7 @@ page.onResourceReceived = function(response) {
   console.log('Receive ' + JSON.stringify(response, undefined, 4));
 };
 page.open(url);
-console.log('Done.');
-phantom.exit();
+setTimeout(function() {
+  console.log('Timeout.');
+  phantom.exit(1);
+}, 5000);
