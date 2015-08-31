@@ -1,6 +1,6 @@
 // Run with phantomjs.
 
-// Test timeout.
+// A timeout for this whole script.
 setTimeout(function() {
   console.log('Timeout.');
   phantom.exit(1);
@@ -13,35 +13,60 @@ var url = ('https://' + system.env['GOOGLE_APP_VERSION'] + '-dot-'
 
 var page = require('webpage').create();
 
-page.onResourceRequested = function(request) {
-  console.log('Request ' + JSON.stringify(request, undefined, 4));
+var TestCase = function TestCase(input, expectedOutput, expectedStatus) {
+  this.input = input;
+  this.expectedOutput = expectedOutput;
+  this.expectedStatus = expectedStatus;
 };
 
-function onConnect() {
+var tests = [
+  new TestCase('hi', 'HI', 'Done!'),
+  new TestCase('chickens', 'chickens', 'Error.')
+];
+
+// An index into the test cases above.
+var test = 0;
+
+function startTest() {
   // Fill the text box with "hi" and press the "Submit" button.
-  page.evaluate(function() {
+  page.evaluate(function(inputValue) {
     var textInput = document.getElementById('shoutText');
-    textInput.value = "hi";
+    textInput.value = inputValue;
     postForm();
-  });
+  }, tests[test].input);
 }
 
 function onShoutStatus() {
-  // Fill the text box with "hi" and press the "Submit" button.
+  // Compare the results to our expectations.
   var text = page.evaluate(function() {
     return document.getElementById('shoutText').value;
   });
-  if (text == "HI") {
-    console.log('Success.');
-    phantom.exit(0);
+  var status = page.evaluate(function() {
+    return document.getElementById('status').innerText;
+  });
+  if (text == tests[test].expectedOutput &&
+      0 == status.indexOf(tests[test].expectedStatus)) {
+    // This test succeeded.
+    test += 1;
+    if (test >= tests.length) {
+      // Finished all the tests.
+      console.log('Success.');
+      phantom.exit(0);
+    } else {
+      startTest();  // Start the next test.
+    }
   }
 }
+
+page.onResourceRequested = function(request) {
+  console.log('Request ' + JSON.stringify(request, undefined, 4));
+};
 
 page.onResourceReceived = function(response) {
   console.log('Receive ' + JSON.stringify(response, undefined, 4));
   if (response.stage == 'end' && response.url.indexOf('/connect') > -1)
   {
-    setTimeout(onConnect, 1);
+    setTimeout(startTest, 1);
   }
 
   if (response.stage == 'end' && response.url.indexOf('/shout') > -1)
