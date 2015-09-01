@@ -72,9 +72,8 @@ namespace ShoutLib
             init = new Initializer();
             init.LogWriter = logWriter;
             init.Random = new Random();
-            var authInit = new Auth.Initializer();
-            authInit.LogWriter = logWriter;
-            var credentials = Auth.GetCredentials(authInit);
+            var credentials = Google.Apis.Auth.OAuth2.GoogleCredential.GetApplicationDefaultAsync().Result;
+            credentials = credentials.CreateScoped(new[] { Google.Apis.Pubsub.v1.PubsubService.Scope.Pubsub });
             init.PubsubService = new PubsubService(new BaseClientService.Initializer()
             {
                 ApplicationName = Constants.UserAgent,
@@ -108,8 +107,9 @@ namespace ShoutLib
                 MaxMessages = 1,
                 ReturnImmediately = false
             }, MakeSubscriptionPath(init.SubscriptionName)).ExecuteAsync();
-            Task.WaitAll(new Task[] { pullTask }, cancellationToken);
+            Task.WaitAny(new Task[] { pullTask }, cancellationToken);
             var pullResponse = pullTask.Result;
+
             int messageCount = pullResponse.ReceivedMessages == null ? 0
                 : pullResponse.ReceivedMessages.Count;
             WriteLog("Received " + messageCount + " tasks.", TraceEventType.Information);
