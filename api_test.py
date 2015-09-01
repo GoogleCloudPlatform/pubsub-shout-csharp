@@ -18,6 +18,7 @@ TODO: Automatically deploy new Windows backends when the csharp code
 import json
 import os
 import pprint
+import unittest
 import urllib
 import urllib2
 import urlparse
@@ -112,13 +113,14 @@ class BrowserState(object):
             raise Failure(reply['status'], errors)
 
 
-with BrowserState(HOST) as state:
-    assert 'HELLO' == state.shout('hello')
-    assert 'JEFF' == state.shout('jeff')
-    try:
-        state.shout('chickens')
-        assert False
-    except Failure:
-        pass
+class Test(unittest.TestCase):
+    def test_all(self):
+        with BrowserState(HOST) as state:
+            self.assertEqual('HELLO', state.shout('hello'))
+            self.assertEqual('JEFF', state.shout('jeff'))
+            with self.assertRaises(Failure):
+                state.shout('chickens')
 
-print "ok"
+
+if __name__ == '__main__':
+    unittest.main()
