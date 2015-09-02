@@ -33,7 +33,7 @@ To deploy the application:
    application](https://developers.google.com/appengine/docs/python/tools/uploadinganapp) with
 
    ```
-   appcfg.py -A <your-project-id> --oauth2 update .
+   appcfg.py -A <your-project-id> -V 1 --oauth2 update .
    ```
 3. Initialize the app by visiting https://&lt;your-project-id&gt;.appspot.com/init.
    This creates the work queue.  You only need visit this page once, ever.
