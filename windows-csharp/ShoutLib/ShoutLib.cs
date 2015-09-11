@@ -18,6 +18,7 @@ using Microsoft.Practices.EnterpriseLibrary.Logging;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -49,15 +50,14 @@ namespace ShoutLib
             public LogWriter LogWriter;
 
             /// <summary>
-            /// Call <c>InitializeServices()</c> for an easy way to fill.
+            /// The PubsubService API.
             /// </summary>
             public PubsubService PubsubService;
 
             /// <summary>
-            /// The authenticated http client we use to call our own app engine code.
-            /// Call <c>InitializeServices()</c> for an easy way to fill.
+            /// An http client we use to call our own app engine code.
             /// </summary>
-            public Google.Apis.Http.ConfigurableHttpClient HttpClient;
+            public HttpClient HttpClient;
 
             /// <summary>
             /// A random number generator.
@@ -79,14 +79,7 @@ namespace ShoutLib
                 ApplicationName = Constants.UserAgent,
                 HttpClientInitializer = credentials,
             });
-            var args = new Google.Apis.Http.CreateHttpClientArgs
-            {
-                ApplicationName = Constants.UserAgent,
-                GZipEnabled = true,
-            };
-            args.Initializers.Add(credentials);
-            var factory = new Google.Apis.Http.HttpClientFactory();
-            init.HttpClient = factory.CreateHttpClient(args);
+            init.HttpClient = new HttpClient();
         }
 
         /// <summary>
