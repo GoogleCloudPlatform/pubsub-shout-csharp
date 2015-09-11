@@ -35,8 +35,11 @@ To deploy the application:
    ```
    appcfg.py -A <your-project-id> -V 1 --oauth2 update .
    ```
-3. Initialize the app by visiting https://&lt;your-project-id&gt;.appspot.com/init.
-   This creates the work queue.  You only need visit this page once, ever.
+3. Initialize the app by visiting
+   https://&lt;your-project-id&gt;.appspot.com/init.
+   This creates a Pub/Sub topic and subscription.  New shout requests are
+   written to the topic and read from the subscription.
+   You only need visit this page once, ever.
    Repeatedly visiting this page will print an error because the resources it
    creates have already been created.
 4. Congratulations!  Your application is now live at your-project-id.appspot.com

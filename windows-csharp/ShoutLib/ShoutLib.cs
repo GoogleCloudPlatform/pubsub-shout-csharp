@@ -39,7 +39,8 @@ namespace ShoutLib
             public string ProjectId = Constants.ProjectId;
 
             /// <summary>
-            /// The name of the pubsub subscription that serves as our work queue.
+            /// The name of the pubsub subscription where we pull shout
+            /// requests from.
             /// </summary>
             public string SubscriptionName = Constants.Subscription;
 
@@ -90,80 +91,83 @@ namespace ShoutLib
         }
 
         /// <summary>
-        /// Waits for a task on the queue.  Converts the text to uppercase and posts the results
-        /// to the browser's topic.
+        /// Waits for a shout request to arrive in the Pub/Sub subscription.
+        /// Converts the text to uppercase and posts the results 
+        /// back to the website.
         /// </summary>
         /// <returns>
-        /// The number of tasks pulled from the queue, or -1 if an expected error
-        /// occurred.
+        /// The number of shout requests pulled from the subscription, or -1
+        /// if an expected error occurred.
         /// </returns>
         public int ShoutOrThrow(System.Threading.CancellationToken cancellationToken)
         {
-            // Pull a task from the queue.
-            WriteLog("Pulling tasks...", TraceEventType.Verbose);
-            var pullTask = init.PubsubService.Projects.Subscriptions.Pull(
+            // Pull a shout request from the subscription.
+            string subscriptionPath = MakeSubscriptionPath(init.SubscriptionName);
+            WriteLog("Pulling shout requests from " + subscriptionPath +"...",
+                TraceEventType.Verbose);
+            var pullRequest = init.PubsubService.Projects.Subscriptions.Pull(
                 new PullRequest()
             {
                 MaxMessages = 1,
                 ReturnImmediately = false
-            }, MakeSubscriptionPath(init.SubscriptionName)).ExecuteAsync();
-            Task.WaitAny(new Task[] { pullTask }, cancellationToken);
-            var pullResponse = pullTask.Result;
+            }, subscriptionPath).ExecuteAsync();
+            Task.WaitAny(new Task[] { pullRequest }, cancellationToken);
+            var pullResponse = pullRequest.Result;
 
             int messageCount = pullResponse.ReceivedMessages == null ? 0
                 : pullResponse.ReceivedMessages.Count;
-            WriteLog("Received " + messageCount + " tasks.", TraceEventType.Information);
+            WriteLog("Received " + messageCount + " requests.", TraceEventType.Information);
             if (messageCount < 1)
-                return 0;  // No tasks pulled.  Nothing to do.
+                return 0;  // Nothing pulled.  Nothing to do.
 
             // Examine the received message.
-            var task = pullResponse.ReceivedMessages[0];
-            var attributes = task.Message.Attributes;
+            var shoutRequest = pullResponse.ReceivedMessages[0];
+            var attributes = shoutRequest.Message.Attributes;
             string postStatusUrl;
             string postStatusToken;
-            DateTime taskDeadline;
+            DateTime requestDeadline;
             try
             {
                 postStatusUrl = attributes["postStatusUrl"];
                 postStatusToken = attributes["postStatusToken"];
                 long unixDeadline = Convert.ToInt64(attributes["deadline"]);
-                taskDeadline = FromUnixTime(unixDeadline);
+                requestDeadline = FromUnixTime(unixDeadline);
             }
             catch (Exception e)
             {
-                WriteLog("Bad task attributes.\n" + e.ToString(), TraceEventType.Warning);
-                DeleteTask(task.AckId);
+                WriteLog("Bad shout request attributes.\n" + e.ToString(), TraceEventType.Warning);
+                Acknowledge(shoutRequest.AckId);
                 return -1;
             }
 
-            // Tell the world we are shouting this task.
+            // Tell the world we are shouting this request.
             PublishStatus(postStatusUrl, postStatusToken, "shouting");
             WriteLog("Shouting " + postStatusUrl, TraceEventType.Verbose);
 
             try
             {
                 // Decode the payload, the string we want to shout.
-                byte[] data = Convert.FromBase64String(task.Message.Data);
+                byte[] data = Convert.FromBase64String(shoutRequest.Message.Data);
                 string decodedString = Encoding.UTF8.GetString(data);
 
                 // Watch the clock and cancellation token as we work.  We need to extend the
-                // ack deadline if the task takes a while.
+                // ack deadline if the request takes a while.
                 var tenSeconds = TimeSpan.FromSeconds(10);
                 DateTime ackDeadline = DateTime.UtcNow + tenSeconds;
                 ThrowIfAborted throwIfAborted = () =>
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var now = DateTime.UtcNow;
-                    if (taskDeadline < now)
-                        throw new FatalException("Task timed out.");
+                    if (requestDeadline < now)
+                        throw new FatalException("Request timed out.");
                     if (ackDeadline < now)
                     {
-                        // Tell the queue we need more time:
+                        // Tell the subscription we need more time:
                         WriteLog("Need more time...", TraceEventType.Verbose);
                         init.PubsubService.Projects.Subscriptions.ModifyAckDeadline(
                             new ModifyAckDeadlineRequest
                         {
-                            AckIds = new string[] { task.AckId },
+                            AckIds = new string[] { shoutRequest.AckId },
                             AckDeadlineSeconds = 15,
                         }, MakeSubscriptionPath(init.SubscriptionName)).Execute();
                         ackDeadline = now + tenSeconds;
@@ -175,7 +179,7 @@ namespace ShoutLib
 
                 // Publish the result.
                 PublishStatus(postStatusUrl, postStatusToken, "success", upperText);
-                DeleteTask(task.AckId);
+                Acknowledge(shoutRequest.AckId);
                 return 1;
             }
             catch (OperationCanceledException)
@@ -185,7 +189,7 @@ namespace ShoutLib
             catch (FatalException e)
             {
                 WriteLog("Fatal exception while shouting:\n" + e.Message, TraceEventType.Error);
-                DeleteTask(task.AckId);
+                Acknowledge(shoutRequest.AckId);
                 PublishStatus(postStatusUrl, postStatusToken, "fatal", e.Message);
                 return -1;
             }
@@ -257,35 +261,36 @@ namespace ShoutLib
                 {"token", postStatusToken},
                 {"result", result},
                 {"host", System.Environment.MachineName}});
-            var task = init.HttpClient.PostAsync(postStatusUrl, content);
-            task.Wait();
-            if (task.Result.StatusCode != System.Net.HttpStatusCode.OK)
+            var httpPost = init.HttpClient.PostAsync(postStatusUrl, content);
+            httpPost.Wait();
+            if (httpPost.Result.StatusCode != System.Net.HttpStatusCode.OK)
             {
-                throw new FatalException(task.Result.ToString());
+                throw new FatalException(httpPost.Result.ToString());
             }
         }
 
         /// <summary>
-        /// Deletes a task from the queue.
+        /// Removes a shout request message from the subscription.
         /// </summary>
-        /// <param name="taskId">The id of the task to delete.</param>
-        private void DeleteTask(string taskId)
+        /// <param name="ackId">The id of the message to remove.</param>
+        private void Acknowledge(string ackId)
         {
-            WriteLog("Deleting task...", TraceEventType.Verbose);
+            WriteLog("Deleting shout request...", TraceEventType.Verbose);
             init.PubsubService.Projects.Subscriptions.Acknowledge(new AcknowledgeRequest()
             {
-                AckIds = new string[] { taskId }
+                AckIds = new string[] { ackId }
             }, MakeSubscriptionPath(init.SubscriptionName)).Execute();
         }
 
         /// <summary>
-        /// Waits for a task on the queue.  Converts the text to uppercase and posts the results
-        /// to the browser's topic.
+        /// Waits for a shout request to arrive in the Pub/Sub subscription.
+        /// Converts the text to uppercase and posts the results 
+        /// back to the website.
         /// </summary>
         /// <remarks>
         /// Nothing more than a wrapper around ShoutOrThrow() to catch unexpected exceptions.
         /// </remarks>
-        /// <returns>The number of tasks pulled, or -1 if an error occurred.</returns>
+        /// <returns>The number of requests pulled, or -1 if an error occurred.</returns>
         public int Shout(System.Threading.CancellationToken cancellationToken)
         {
             try

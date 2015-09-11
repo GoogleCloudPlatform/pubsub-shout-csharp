@@ -39,7 +39,7 @@
             // 
             // serviceInstaller1
             // 
-            this.serviceInstaller1.Description = "Reads tasks from the queue and shouts them.";
+            this.serviceInstaller1.Description = "Reads shout requests from the subscription and shouts them.";
             this.serviceInstaller1.DisplayName = "ShoutService";
             this.serviceInstaller1.ServiceName = "ShoutService";
             this.serviceInstaller1.StartType = System.ServiceProcess.ServiceStartMode.Automatic;
