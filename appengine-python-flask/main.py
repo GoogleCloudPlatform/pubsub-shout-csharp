@@ -177,7 +177,7 @@ def shout():
     entity.host = socket.gethostname()
     async_put = entity.put_async()
 
-    # Publish a shout request to the Pub/Sub topic.
+    # Publish a shout request message to the Pub/Sub topic.
     deadline = utctimestamp() + TIMEOUT_SECONDS
     ps = pubsub.PubSub(APP_ID)
     query = werkzeug.urls.url_encode({

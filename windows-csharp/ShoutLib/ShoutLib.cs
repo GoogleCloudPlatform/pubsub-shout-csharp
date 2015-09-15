@@ -40,7 +40,7 @@ namespace ShoutLib
 
             /// <summary>
             /// The name of the pubsub subscription where we pull shout
-            /// requests from.
+            /// request messages from.
             /// </summary>
             public string SubscriptionName = Constants.Subscription;
 
@@ -91,19 +91,19 @@ namespace ShoutLib
         }
 
         /// <summary>
-        /// Waits for a shout request to arrive in the Pub/Sub subscription.
-        /// Converts the text to uppercase and posts the results 
+        /// Waits for a shout request message to arrive in the Pub/Sub
+        /// subscription.  Converts the text to uppercase and posts the results 
         /// back to the website.
         /// </summary>
         /// <returns>
-        /// The number of shout requests pulled from the subscription, or -1
-        /// if an expected error occurred.
+        /// The number of messages pulled from the subscription,
+        /// or -1 if an expected error occurred.
         /// </returns>
         public int ShoutOrThrow(System.Threading.CancellationToken cancellationToken)
         {
-            // Pull a shout request from the subscription.
+            // Pull a shout request message from the subscription.
             string subscriptionPath = MakeSubscriptionPath(init.SubscriptionName);
-            WriteLog("Pulling shout requests from " + subscriptionPath +"...",
+            WriteLog("Pulling shout request messages from " + subscriptionPath +"...",
                 TraceEventType.Verbose);
             var pullRequest = init.PubsubService.Projects.Subscriptions.Pull(
                 new PullRequest()
@@ -116,13 +116,14 @@ namespace ShoutLib
 
             int messageCount = pullResponse.ReceivedMessages == null ? 0
                 : pullResponse.ReceivedMessages.Count;
-            WriteLog("Received " + messageCount + " requests.", TraceEventType.Information);
+            WriteLog("Received " + messageCount + " messages.",
+                     TraceEventType.Information);
             if (messageCount < 1)
                 return 0;  // Nothing pulled.  Nothing to do.
 
             // Examine the received message.
-            var shoutRequest = pullResponse.ReceivedMessages[0];
-            var attributes = shoutRequest.Message.Attributes;
+            var shoutRequestMessage = pullResponse.ReceivedMessages[0];
+            var attributes = shoutRequestMessage.Message.Attributes;
             string postStatusUrl;
             string postStatusToken;
             DateTime requestDeadline;
@@ -135,8 +136,9 @@ namespace ShoutLib
             }
             catch (Exception e)
             {
-                WriteLog("Bad shout request attributes.\n" + e.ToString(), TraceEventType.Warning);
-                Acknowledge(shoutRequest.AckId);
+                WriteLog("Bad shout request message attributes.\n" + e.ToString(),
+                    TraceEventType.Warning);
+                Acknowledge(shoutRequestMessage.AckId);
                 return -1;
             }
 
@@ -147,7 +149,7 @@ namespace ShoutLib
             try
             {
                 // Decode the payload, the string we want to shout.
-                byte[] data = Convert.FromBase64String(shoutRequest.Message.Data);
+                byte[] data = Convert.FromBase64String(shoutRequestMessage.Message.Data);
                 string decodedString = Encoding.UTF8.GetString(data);
 
                 // Watch the clock and cancellation token as we work.  We need to extend the
@@ -167,7 +169,7 @@ namespace ShoutLib
                         init.PubsubService.Projects.Subscriptions.ModifyAckDeadline(
                             new ModifyAckDeadlineRequest
                         {
-                            AckIds = new string[] { shoutRequest.AckId },
+                            AckIds = new string[] { shoutRequestMessage.AckId },
                             AckDeadlineSeconds = 15,
                         }, MakeSubscriptionPath(init.SubscriptionName)).Execute();
                         ackDeadline = now + tenSeconds;
@@ -179,7 +181,7 @@ namespace ShoutLib
 
                 // Publish the result.
                 PublishStatus(postStatusUrl, postStatusToken, "success", upperText);
-                Acknowledge(shoutRequest.AckId);
+                Acknowledge(shoutRequestMessage.AckId);
                 return 1;
             }
             catch (OperationCanceledException)
@@ -189,7 +191,7 @@ namespace ShoutLib
             catch (FatalException e)
             {
                 WriteLog("Fatal exception while shouting:\n" + e.Message, TraceEventType.Error);
-                Acknowledge(shoutRequest.AckId);
+                Acknowledge(shoutRequestMessage.AckId);
                 PublishStatus(postStatusUrl, postStatusToken, "fatal", e.Message);
                 return -1;
             }
@@ -275,7 +277,7 @@ namespace ShoutLib
         /// <param name="ackId">The id of the message to remove.</param>
         private void Acknowledge(string ackId)
         {
-            WriteLog("Deleting shout request...", TraceEventType.Verbose);
+            WriteLog("Deleting shout request message...", TraceEventType.Verbose);
             init.PubsubService.Projects.Subscriptions.Acknowledge(new AcknowledgeRequest()
             {
                 AckIds = new string[] { ackId }
@@ -283,14 +285,14 @@ namespace ShoutLib
         }
 
         /// <summary>
-        /// Waits for a shout request to arrive in the Pub/Sub subscription.
+        /// Waits for a shout request message to arrive in the Pub/Sub subscription.
         /// Converts the text to uppercase and posts the results 
         /// back to the website.
         /// </summary>
         /// <remarks>
         /// Nothing more than a wrapper around ShoutOrThrow() to catch unexpected exceptions.
         /// </remarks>
-        /// <returns>The number of requests pulled, or -1 if an error occurred.</returns>
+        /// <returns>The number of messages pulled, or -1 if an error occurred.</returns>
         public int Shout(System.Threading.CancellationToken cancellationToken)
         {
             try
