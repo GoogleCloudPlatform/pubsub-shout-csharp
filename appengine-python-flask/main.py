@@ -50,11 +50,13 @@ from flask import Flask, request
 import jinja2
 
 from google.appengine.api import app_identity
+from google.appengine.api import modules
 from google.appengine.ext import ndb
 
 app = Flask(__name__)
 app.config['DEBUG'] = True
-purse = rotoken.Rotoken()  # Where my rotating tokens are kept.
+# Where my rotating tokens are kept.
+purse = rotoken.Rotoken(modules.get_current_version_name())
 
 JINJA_ENVIRONMENT = jinja2.Environment(
     loader=jinja2.FileSystemLoader(os.path.join(os.path.dirname(__file__),
@@ -62,8 +64,8 @@ JINJA_ENVIRONMENT = jinja2.Environment(
     extensions=['jinja2.ext.autoescape'],
     autoescape=True)
 
-TOPIC = "shout-tasks"
-SUBSCRIPTION = "shout-tasks-workers"
+TOPIC = "shout-requests"
+SUBSCRIPTION = "shout-request-workers"
 TIMEOUT_SECONDS = 90
 APP_ID = app_identity.get_application_id()
 RANDOM_ID_LEN = 43  # Equivalent to 256 bits of randomness.
@@ -154,7 +156,7 @@ def connect():
         'browserId': new_random_id()
     })
     return json.dumps({
-        # Tell the client how to send requests to this queue.
+        # Tell the client how to send shout requests to us.
         'shoutLink': {
             'target': 'shout',
             'method': 'POST',
@@ -175,7 +177,7 @@ def shout():
     entity.host = socket.gethostname()
     async_put = entity.put_async()
 
-    # Insert the task into the work queue.
+    # Publish a shout request message to the Pub/Sub topic.
     deadline = utctimestamp() + TIMEOUT_SECONDS
     ps = pubsub.PubSub(APP_ID)
     query = werkzeug.urls.url_encode({
@@ -202,14 +204,15 @@ def shout_status():
 
 
 def poll_shout_status(browser_id, shout_id, last_status):
-    """Poll datastore waiting for the shout task to complete.
+    """Poll datastore waiting for the shout request to complete.
 
     Why not return the status immediately?
     That would work too, but then the browser would be constantly sending new
-    HTTP requests to check to see if its task is done.  That would consume the
-    users' bandwidth and battery life.
+    HTTP requests to check to see if its shout request is done.  That would
+    consume the users' bandwidth and battery life.
 
-    Why not poll until the task is complete?  Why timeout after 45 seconds?
+    Why not poll until the shout request is complete?  Why timeout after 45
+    seconds?
     Because App Engine will terminate any HTTP request that doesn't complete
     in 60 seconds.  We have to return something before that deadline.
 

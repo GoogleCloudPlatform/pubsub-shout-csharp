@@ -29,6 +29,8 @@ install:
 script:
 # Deploy the app
 - gcloud -q preview app deploy appengine-python-flask/app.yaml --version ${GOOGLE_APP_VERSION}
+# Initialize it
+- curl https://${GOOGLE_APP_VERSION}-dot-${GOOGLE_APP_ID}.appspot.com/init
 # Run an end to end test
 - python api_test.py
 - phantomjs test.js
