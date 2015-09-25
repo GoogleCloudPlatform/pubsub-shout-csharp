@@ -39,7 +39,7 @@ def create_pubsub_client(disdoc, http=None):
     return discovery.build_from_document(disdoc, http=http)
 
 
-class PubSub:
+class PubSub(object):
     """A thin wrapper around the REST pubsub API.  Thread-safe and cheap.
 
     Takes care of threading issues and authentication.
