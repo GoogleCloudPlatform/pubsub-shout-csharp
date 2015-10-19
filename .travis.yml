@@ -7,19 +7,21 @@ cache:
   - "$HOME/gcloud/"
 env:
 # Make sure gcloud command is on our PATH and the App Engine SDK is in the Python path
-- PATH=$PATH:$HOME/gcloud/google-cloud-sdk/bin PYTHONPATH=${HOME}/gcloud/google-cloud-sdk/platform/google_appengine
+  globals:
+    - PATH=$PATH:$HOME/gcloud/google-cloud-sdk/bin
+    - PYTHONPATH=${HOME}/gcloud/google-cloud-sdk/platform/google_appengine
+    - GOOGLE_APPLICATION_CREDENTIALS=$TRAVIS_BUILD_DIR/credentials.json
 before_install:
-# Decrypt the credentials we added to the repo using the key we added with the Travis command line tool
-- openssl aes-256-cbc -K $encrypted_f04cb9432369_key -iv $encrypted_f04cb9432369_iv -in credentials.tar.gz.enc -out credentials.tar.gz -d
+# Decrypt the credentials stored in the base64-encoded environment variable.
+- python dump_credentials.py
 # If the SDK is not already cached, download it and unpack it
 - if [ ! -d $HOME/gcloud/google-cloud-sdk ]; then mkdir -p $HOME/gcloud && wget https://dl.google.com/dl/cloudsdk/release/google-cloud-sdk.tar.gz
   --directory-prefix=$HOME/gcloud && cd $HOME/gcloud && tar xzf google-cloud-sdk.tar.gz
   && printf '\ny\n\ny\ny\n' | ./google-cloud-sdk/install.sh && cd $TRAVIS_BUILD_DIR;
   fi
-- tar -xzf credentials.tar.gz
 - mkdir -p lib
 # Here we use the decrypted service account credentials to authenticate the command line tool
-- gcloud auth activate-service-account --key-file shout7q-346edad20ace.json
+- gcloud auth activate-service-account --key-file ${GOOGLE_APPLICATION_CREDENTIALS}
 install:
 # Set the correct project to deploy to
 - gcloud config set project ${GOOGLE_APP_ID}
@@ -28,7 +30,7 @@ install:
 - pip install -r appengine-python-flask/requirements.txt -t appengine-python-flask/lib/
 script:
 # Deploy the app
-- gcloud -q preview app deploy appengine-python-flask/app.yaml --version ${GOOGLE_APP_VERSION}
+- gcloud -q preview app deploy appengine-python-flask/app.yaml --no-promote --version ${GOOGLE_APP_VERSION}
 # Initialize it
 - curl https://${GOOGLE_APP_VERSION}-dot-${GOOGLE_APP_ID}.appspot.com/init
 # Run an end to end test
