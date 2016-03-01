@@ -1,16 +1,17 @@
-﻿// Copyright 2015 Google Inc. All Rights Reserved.
+﻿// Copyright(c) 2016 Google Inc.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// Licensed under the Apache License, Version 2.0 (the "License"); you may not
+// use this file except in compliance with the License. You may obtain a copy of
+// the License at
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+// WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+// License for the specific language governing permissions and limitations under
+// the License.
+
 using Google.Apis.Pubsub.v1;
 using Google.Apis.Pubsub.v1.Data;
 using Google.Apis.Services;
@@ -64,28 +65,39 @@ namespace ShoutLib
             /// A random number generator.
             /// </summary>
             public System.Random Random;
+
+            public static Initializer CreateDefault()
+            {
+                var init = new Initializer();
+                init.Random = new Random();
+                var credentials = Google.Apis.Auth.OAuth2.GoogleCredential.GetApplicationDefaultAsync().Result;
+                credentials = credentials.CreateScoped(new[] { PubsubService.Scope.Pubsub });
+                init.PubsubService = new PubsubService(new BaseClientService.Initializer()
+                {
+                    ApplicationName = Constants.UserAgent,
+                    HttpClientInitializer = credentials,
+                });
+                init.HttpClient = new HttpClient();
+                return init;
+            }
         }
 
-        private Initializer init;
+        private readonly Initializer _init;
 
-        public Shouter(LogWriter logWriter = null)
+        public Shouter(Initializer init = null)
         {
-            init = new Initializer();
-            init.LogWriter = logWriter;
-            init.Random = new Random();
-            var credentials = Google.Apis.Auth.OAuth2.GoogleCredential.GetApplicationDefaultAsync().Result;
-            credentials = credentials.CreateScoped(new[] { Google.Apis.Pubsub.v1.PubsubService.Scope.Pubsub });
-            init.PubsubService = new PubsubService(new BaseClientService.Initializer()
-            {
-                ApplicationName = Constants.UserAgent,
-                HttpClientInitializer = credentials,
-            });
-            init.HttpClient = new HttpClient();
+            _init = init ?? Initializer.CreateDefault();
+        }
+
+        public Shouter(LogWriter logWriter)
+        {
+            _init = Initializer.CreateDefault();
+            _init.LogWriter = logWriter;
         }
 
         /// <summary>
         /// Waits for a shout request message to arrive in the Pub/Sub
-        /// subscription.  Converts the text to uppercase and posts the results 
+        /// subscription.  Converts the text to uppercase and posts the results
         /// back to the website.
         /// </summary>
         /// <returns>
@@ -95,15 +107,15 @@ namespace ShoutLib
         public int ShoutOrThrow(System.Threading.CancellationToken cancellationToken)
         {
             // Pull a shout request message from the subscription.
-            string subscriptionPath = MakeSubscriptionPath(init.SubscriptionName);
-            WriteLog("Pulling shout request messages from " + subscriptionPath +"...",
+            string subscriptionPath = MakeSubscriptionPath(_init.SubscriptionName);
+            WriteLog("Pulling shout request messages from " + subscriptionPath + "...",
                 TraceEventType.Verbose);
-            var pullRequest = init.PubsubService.Projects.Subscriptions.Pull(
+            var pullRequest = _init.PubsubService.Projects.Subscriptions.Pull(
                 new PullRequest()
-            {
-                MaxMessages = 1,
-                ReturnImmediately = false
-            }, subscriptionPath).ExecuteAsync();
+                {
+                    MaxMessages = 1,
+                    ReturnImmediately = false
+                }, subscriptionPath).ExecuteAsync();
             Task.WaitAny(new Task[] { pullRequest }, cancellationToken);
             var pullResponse = pullRequest.Result;
 
@@ -159,12 +171,12 @@ namespace ShoutLib
                     {
                         // Tell the subscription we need more time:
                         WriteLog("Need more time...", TraceEventType.Verbose);
-                        init.PubsubService.Projects.Subscriptions.ModifyAckDeadline(
+                        _init.PubsubService.Projects.Subscriptions.ModifyAckDeadline(
                             new ModifyAckDeadlineRequest
-                        {
-                            AckIds = new string[] { shoutRequestMessage.AckId },
-                            AckDeadlineSeconds = 15,
-                        }, MakeSubscriptionPath(init.SubscriptionName)).Execute();
+                            {
+                                AckIds = new string[] { shoutRequestMessage.AckId },
+                                AckDeadlineSeconds = 15,
+                            }, MakeSubscriptionPath(_init.SubscriptionName)).Execute();
                         ackDeadline = now + tenSeconds;
                     }
                 };
@@ -229,7 +241,7 @@ namespace ShoutLib
             if (upperText.Contains("CORN"))
             {
                 // Simulate a flaky error that happens sometimes, but not always.
-                if (init.Random.Next(3) > 0)
+                if (_init.Random.Next(3) > 0)
                     throw new CornException();
             }
             if (upperText.Contains("COW"))
@@ -256,7 +268,7 @@ namespace ShoutLib
                 {"token", postStatusToken},
                 {"result", result},
                 {"host", System.Environment.MachineName}});
-            var httpPost = init.HttpClient.PostAsync(postStatusUrl, content);
+            var httpPost = _init.HttpClient.PostAsync(postStatusUrl, content);
             httpPost.Wait();
             if (httpPost.Result.StatusCode != System.Net.HttpStatusCode.OK)
             {
@@ -271,15 +283,15 @@ namespace ShoutLib
         private void Acknowledge(string ackId)
         {
             WriteLog("Deleting shout request message...", TraceEventType.Verbose);
-            init.PubsubService.Projects.Subscriptions.Acknowledge(new AcknowledgeRequest()
+            _init.PubsubService.Projects.Subscriptions.Acknowledge(new AcknowledgeRequest()
             {
                 AckIds = new string[] { ackId }
-            }, MakeSubscriptionPath(init.SubscriptionName)).Execute();
+            }, MakeSubscriptionPath(_init.SubscriptionName)).Execute();
         }
 
         /// <summary>
         /// Waits for a shout request message to arrive in the Pub/Sub subscription.
-        /// Converts the text to uppercase and posts the results 
+        /// Converts the text to uppercase and posts the results
         /// back to the website.
         /// </summary>
         /// <remarks>
@@ -306,14 +318,14 @@ namespace ShoutLib
         /// </summary>
         private void WriteLog(string message, TraceEventType severity = TraceEventType.Information)
         {
-            if (init.LogWriter == null || !init.LogWriter.IsLoggingEnabled())
+            if (_init.LogWriter == null || !_init.LogWriter.IsLoggingEnabled())
                 return;
             LogEntry entry = new LogEntry()
             {
                 Message = message,
                 Severity = severity
             };
-            init.LogWriter.Write(entry);
+            _init.LogWriter.Write(entry);
         }
 
         /// <summary>
@@ -331,7 +343,7 @@ namespace ShoutLib
         /// </summary>
         private string MakeSubscriptionPath(string subscription)
         {
-            return "projects/" + init.ProjectId + "/subscriptions/" + subscription;
+            return "projects/" + _init.ProjectId + "/subscriptions/" + subscription;
         }
 
         /// <summary>
@@ -339,7 +351,7 @@ namespace ShoutLib
         /// </summary>
         private string MakeTopicPath(string topic)
         {
-            return "projects/" + init.ProjectId + "/topics/" + topic;
+            return "projects/" + _init.ProjectId + "/topics/" + topic;
         }
     }
 
@@ -349,7 +361,8 @@ namespace ShoutLib
     internal class CornException : Exception
     {
         public CornException()
-            : base("I don't like corn flakes.") { }
+            : base("I don't like corn flakes.")
+        { }
     }
 
     /// <summary>
@@ -358,7 +371,8 @@ namespace ShoutLib
     internal class CowException : Exception
     {
         public CowException()
-            : base("Mooooooo.") { }
+            : base("Mooooooo.")
+        { }
     }
 
     /// <summary>
@@ -367,6 +381,7 @@ namespace ShoutLib
     internal class FatalException : Exception
     {
         public FatalException(string message)
-            : base(message) { }
+            : base(message)
+        { }
     }
 }
