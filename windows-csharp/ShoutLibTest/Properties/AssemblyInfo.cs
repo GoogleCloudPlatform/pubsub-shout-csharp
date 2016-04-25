@@ -18,12 +18,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("ShoutService")]
+[assembly: AssemblyTitle("ShoutLibTest")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Google Inc")]
-[assembly: AssemblyProduct("ShoutService")]
-[assembly: AssemblyCopyright("Copyright \u00A9 Google Inc 2015")]
+[assembly: AssemblyProduct("ShoutLibTest")]
+[assembly: AssemblyCopyright("Copyright \u00A9 Google Inc 2016")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -33,7 +33,7 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("6aea76b8-49b8-4279-8f1a-a530b2511153")]
+[assembly: Guid("46347139-1bc3-42cd-9ac7-4a149caa37c8")]
 
 // Version information for an assembly consists of the following four values:
 //
