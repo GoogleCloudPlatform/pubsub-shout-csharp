@@ -26,7 +26,7 @@ install:
 # Set the correct project to deploy to
 - gcloud config set project ${GOOGLE_APP_ID}
 # Install the AppEngine SDK
-- gcloud -q components update gae-python
+- gcloud -q components update
 - pip install -r appengine-python-flask/requirements.txt -t appengine-python-flask/lib/
 script:
 # Deploy the app
