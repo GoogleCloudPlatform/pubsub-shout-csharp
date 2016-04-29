@@ -19,17 +19,22 @@ before_install:
   --directory-prefix=$HOME/gcloud && cd $HOME/gcloud && tar xzf google-cloud-sdk.tar.gz
   && printf '\ny\n\ny\ny\n' | ./google-cloud-sdk/install.sh && cd $TRAVIS_BUILD_DIR;
   fi
-- mkdir -p lib
 # Here we use the decrypted service account credentials to authenticate the command line tool
 - gcloud auth activate-service-account --key-file ${GOOGLE_APPLICATION_CREDENTIALS}
 install:
 # Set the correct project to deploy to
 - gcloud config set project ${GOOGLE_APP_ID}
 # Install the AppEngine SDK
-- gcloud -q components update gae-python
+- gcloud -q components update
+- gcloud info
+# Have to wipe out the lib directory.  See 
+# https://github.com/GoogleCloudPlatform/appengine-flask-skeleton/issues/1
+- rm -rf appengine-python-flask/lib
+- mkdir appengine-python-flask/lib
 - pip install -r appengine-python-flask/requirements.txt -t appengine-python-flask/lib/
 script:
 # Deploy the app
+- gcloud config set app/use_gsutil true
 - gcloud -q preview app deploy appengine-python-flask/app.yaml --no-promote --version ${GOOGLE_APP_VERSION}
 # Initialize it
 - curl https://${GOOGLE_APP_VERSION}-dot-${GOOGLE_APP_ID}.appspot.com/init
