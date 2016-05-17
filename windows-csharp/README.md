@@ -11,6 +11,8 @@ It demonstrates how to use
  - [Invoking Legacy Code on Google Cloud Platform](
    https://cloud.google.com/solutions/invoking-legacy-code).
  - [.NET on Google Cloud Platform](https://cloud.google.com/dotnet/)
+ - [Google Cloud Pub/Sub API Client Library for .NET](
+   https://developers.google.com/api-client-library/dotnet/apis/pubsub/v1)
 
 ## Build
 0.  On your Windows development machine,
