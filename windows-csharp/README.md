@@ -1,8 +1,16 @@
 ## Windows Shout Example
 
+See [Invoking Legacy Code on Google Cloud Platform](
+https://cloud.google.com/solutions/invoking-legacy-code).
+
 A C# application designed to run on Google Compute Engine.
 It demonstrates how to use
 [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/docs).
+
+## Links
+ - [Invoking Legacy Code on Google Cloud Platform](
+   https://cloud.google.com/solutions/invoking-legacy-code).
+ - [.NET on Google Cloud Platform](https://cloud.google.com/dotnet/)
 
 ## Build
 0.  On your Windows development machine,
