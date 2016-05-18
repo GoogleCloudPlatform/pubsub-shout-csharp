@@ -29,7 +29,7 @@ It demonstrates how to use
     ```sh
     git clone https://github.com/GoogleCloudPlatform/pubsub-shout-csharp
     ```
-4.  Open ShoutSelvice.sln with Microsoft Visual Studio version 2012 or later.
+4.  Open ShoutService.sln with Microsoft Visual Studio version 2012 or later.
 5.  Edit `ShoutLib/Constants.cs`.  Update the variable `ProjectId`.
 6.  Build the Solution.
 7.  Run it locally by pressing F5 or choosing "Debug -> Start Debugging" from
