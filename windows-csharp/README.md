@@ -1,8 +1,18 @@
 ## Windows Shout Example
 
+See [Invoking Legacy Code on Google Cloud Platform](
+https://cloud.google.com/solutions/invoking-legacy-code).
+
 A C# application designed to run on Google Compute Engine.
 It demonstrates how to use
 [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/docs).
+
+## Links
+ - [Invoking Legacy Code on Google Cloud Platform](
+   https://cloud.google.com/solutions/invoking-legacy-code).
+ - [.NET on Google Cloud Platform](https://cloud.google.com/dotnet/)
+ - [Google Cloud Pub/Sub API Client Library for .NET](
+   https://developers.google.com/api-client-library/dotnet/apis/pubsub/v1)
 
 ## Build
 0.  On your Windows development machine,
@@ -19,7 +29,7 @@ It demonstrates how to use
     ```sh
     git clone https://github.com/GoogleCloudPlatform/pubsub-shout-csharp
     ```
-4.  Open ShoutSelvice.sln with Microsoft Visual Studio version 2012 or later.
+4.  Open ShoutService.sln with Microsoft Visual Studio version 2012 or later.
 5.  Edit `ShoutLib/Constants.cs`.  Update the variable `ProjectId`.
 6.  Build the Solution.
 7.  Run it locally by pressing F5 or choosing "Debug -> Start Debugging" from

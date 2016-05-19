@@ -1,9 +1,18 @@
 ## Shout Example for Google App Engine
 
+See [Invoking Legacy Code on Google Cloud Platform](
+https://cloud.google.com/solutions/invoking-legacy-code).
+
 A Python application on Google App Engine with the
 [Flask micro framework](http://flask.pocoo.org).  It demonstrates how to use
 [Google Cloud Pub/Sub](https://cloud.google.com/pubsub/docs) to invoke a
 Windows backend.
+
+## Links
+ - [Invoking Legacy Code on Google Cloud Platform](
+   https://cloud.google.com/solutions/invoking-legacy-code).
+ - [Google App Engine Python Standard Environment Documentation](
+ https://cloud.google.com/appengine/docs/python/)
 
 ## Build
 1. Install the [App Engine Python SDK](https://developers.google.com/appengine/downloads).
