@@ -35,7 +35,7 @@ install:
 script:
 # Deploy the app
 - gcloud config set app/use_gsutil true
-- gcloud -q preview app deploy appengine-python-flask/app.yaml --no-promote --version ${GOOGLE_APP_VERSION}
+- gcloud -q app deploy appengine-python-flask/app.yaml --no-promote --version ${GOOGLE_APP_VERSION}
 # Initialize it
 - curl https://${GOOGLE_APP_VERSION}-dot-${GOOGLE_APP_ID}.appspot.com/init
 # Run an end to end test
